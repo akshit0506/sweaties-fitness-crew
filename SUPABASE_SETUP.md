@@ -1,4 +1,8 @@
-# Supabase Setup
+# Supabase Setup — SweaTies
+
+> **Note:** the intro and "not done in this milestone" sections below are from
+> the original backend milestone and are kept for history. The app now runs
+> on this backend end to end; for the current model see `README.md`.
 
 This is the Supabase foundation for the backend — schema, RLS, storage, and
 seed data. **Nothing in `src/` has changed.** The frontend still runs
@@ -16,9 +20,11 @@ supabase/
 │   ├── 20260725120100_rls_policies.sql      # RLS on every table
 │   ├── 20260725120200_storage.sql           # activity-photos bucket + policies
 │   ├── 20260725161000_auth_claim.sql        # superseded — see 20260726090000_phone_auth.sql
-│   └── 20260726090000_phone_auth.sql        # claim_athlete_with_phone() / login_with_phone(), phone_number column
-├── seed.sql                                 # LOCAL DEV ONLY — 7 athletes + ~30–45 days of activity history, comments, kudos
-└── production_bootstrap.sql                 # PRODUCTION — 7 unclaimed athletes + 5 activity types, nothing else
+│   ├── 20260726090000_phone_auth.sql        # superseded roster-claim RPCs, phone_number column
+│   ├── 20260727100000_activity_photos.sql   # activity_photos table
+│   └── 20260801100000_groups.sql            # groups, invite codes, shared-group RLS, reactions, realtime
+├── seed.sql                                 # LOCAL DEV ONLY — "Demo Crew" group (code DEMOCREW01), 7 athletes, ~30–45 days of activity, comments, kudos
+└── production_bootstrap.sql                 # PRODUCTION — the 5 default activity types, nothing else
 ```
 
 `seed.sql` and `production_bootstrap.sql` are two deliberately separate
@@ -58,6 +64,7 @@ npx supabase stop
 
 After `supabase start`, open Studio → Table Editor and check:
 - `athletes` — 7 rows, `auth_user_id` null on all of them (expected — nobody's signed in yet).
+- `groups` / `group_members` — one "Demo Crew" group (`invite_code` `DEMOCREW01`) with all 7 athletes.
 - `activities` — should be roughly 150–200 rows, spread across the last ~45 days, varying in frequency per athlete.
 - `activity_types` — 7 rows: 5 defaults (`created_by` null) + `Cardio` and `Pickleball` (`created_by` set).
 - `kudos` / `comments` — non-empty, no row where the giver/commenter equals the activity's own athlete.
@@ -106,9 +113,8 @@ Studio (see `DEPLOYMENT.md` §4).
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from
   `supabase status` (local) or Studio → Project Settings → API (hosted).
 
-That's the whole list — no service-role key. Sign-up and profile claiming
-are self-serve (see `FRONTEND_INTEGRATION.md`'s "Self-Serve Profile
-Claiming" milestone), so there's no admin script that needs elevated
+That's the whole list — no service-role key. Sign-up and group creation
+are self-serve (see `20260801100000_groups.sql`), so there's no admin script that needs elevated
 access; if you ever need the service-role key for a one-off admin task,
 grab it fresh from Studio when you need it rather than keeping it on file.
 

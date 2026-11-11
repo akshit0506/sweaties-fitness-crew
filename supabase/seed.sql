@@ -1,5 +1,5 @@
 -- ============================================================================
--- Family Workout — DEVELOPMENT seed (local dev only)
+-- SweaTies — DEVELOPMENT seed (local dev only)
 --
 -- This file is for local development and testing ONLY. It is never used in
 -- production — `supabase db push` (the command that deploys migrations to a

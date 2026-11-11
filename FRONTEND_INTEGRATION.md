@@ -1,5 +1,13 @@
 # Frontend Integration
 
+> **SweaTies note:** this document is a historical log written when the app was
+> the single-roster "Family Workout". It documents how the frontend was wired to Supabase. The app is now **SweaTies** —
+> self-serve sign-up, private groups and invite codes (see
+> `supabase/migrations/20260801100000_groups.sql` and `README.md`). Where this
+> file says "family" or describes claiming a pre-seeded roster, read it as the
+> earlier design.
+
+
 This document covers five milestones, newest first. The read-path
 milestone (bottom of this file) swapped `lib/data/*` from `lib/mock/*` to
 Supabase reads, with writes still local-only. **Authentication &

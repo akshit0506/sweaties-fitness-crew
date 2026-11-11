@@ -84,9 +84,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Pick any of the
-seeded family members' names and enter any 10-digit number to claim that
-profile — there's no code to look up anywhere, local or otherwise.
+Open [http://localhost:3000](http://localhost:3000). Choose **I'm new**,
+enter a name and any 10-digit number (there's no code to look up anywhere,
+local or otherwise), then join the seeded group with invite code
+`DEMOCREW01` — or create your own group.
 
 ## Scripts
 
@@ -114,14 +115,14 @@ This repo is documentation-heavy on purpose — the "why," not just the
 
 ## Deployment
 
-Not yet deployed to production. `DEPLOYMENT.md` has the full runbook —
-hosted Supabase project setup, production data bootstrap (a clean slate,
-no demo content), auth/SMTP configuration, and Vercel deployment — along
-with a PWA-specific checklist and browser compatibility notes.
+Live at <https://family-workout-navy.vercel.app> (Vercel project
+`family-workout` — a legacy name; the app itself is SweaTies).
+`DEPLOYMENT.md` has the full runbook — hosted Supabase project setup,
+migrations, auth configuration, Vercel deployment and a PWA checklist.
 
 ## License
 
-Private family project — not licensed for reuse.
+Private project — not licensed for reuse.
 
 ## Known limitations
 

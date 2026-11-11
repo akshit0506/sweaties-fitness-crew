@@ -1,23 +1,27 @@
 # Product Specification — SweaTies
 
-> **Update (v2):** the app was originally a single fixed 7-person family
-> roster ("Family Workout"/"Octopus"). It is now **SweaTies**: users sign up
-> themselves and create or join private groups via invite codes; feeds and
-> leaderboards are scoped per group. Sections below that describe a fixed
-> roster, a single group, or "family" members predate this change.
+> **Update (v2 — SweaTies):** the app began as "Family Workout" (later
+> "Octopus"), a single fixed roster of 7 family members. It is now
+> **SweaTies**, a Strava-style social app for closed groups of friends and
+> colleagues: people sign up themselves and create or join **private
+> groups** with invite codes, and feeds and leaderboards are scoped per
+> group. Wherever the text below says "family", read "group/crew".
 
 ## 1. Problem & Goal
 
-A 7-person extended family (two related adult households, no kids) wants
-shared visibility into each other's workouts for motivation and light social
-accountability — not coaching, not competition for its own sake. Success =
-family members work out more consistently because they can see each other
-doing it.
+Small circles of friends, teammates or colleagues want shared visibility
+into each other's workouts for motivation and light social accountability —
+not coaching, not competition for its own sake. Success = members work out
+more consistently because they can see each other doing it.
 
 ## 2. Users
 
-7 adults, one shared group, no sub-groups. All members have equal standing —
-no admin/coach role. Kids are explicitly out of scope for MVP.
+Adults in small, closed groups (originally a 7-person family). Anyone can
+sign up and create a group; joining requires the group's invite code. A
+person can belong to several groups and only sees workouts of people they
+share a group with. Within a group all members have equal standing for
+logging and reacting; the creator is the group admin (can reset the invite
+code). No coach role.
 
 ## 3. Product Principles
 
@@ -28,7 +32,7 @@ no admin/coach role. Kids are explicitly out of scope for MVP.
   design and engineering decisions should default to the installed-PWA
   case, not compromise it for desktop parity.
 - **Manual logging is the trusted source of truth.** No verification or
-  anti-cheat mechanism — this only works because it's family, not strangers.
+  anti-cheat mechanism — this only works because groups are small and invite-only, not strangers.
 - **Friction is deliberate in exactly one place**: the daily log action
   (press-and-hold). Everywhere else — browsing, giving kudos — must stay
   low-friction.
@@ -43,14 +47,14 @@ no admin/coach role. Kids are explicitly out of scope for MVP.
 ## 4. Core User Journey (open app → log a workout)
 
 1. Open the app → land on **Home**.
-2. See own snapshot (streak, rank, entries this period) and the family's
+2. See own snapshot (streak, rank, entries this period) and the group's
    recent activity feed.
 3. Press and hold the primary action to log today's workout.
 4. Select the activity type(s) logged (from the default taxonomy or a
    custom one), optionally add a note/duration.
 5. Confirm — the entry appears in the shared feed immediately and the
    member's own streak/stats update.
-6. From there, a member can browse **Board** to see the family ranking, open
+6. From there, a member can browse **Board** to see the group ranking, open
    **Profile** to review their own history, or react to others' entries with
    kudos/comments directly from the Home feed.
 
@@ -62,8 +66,8 @@ not a silent toggle.
 
 | Screen | Primary use case |
 |---|---|
-| **Home** | Daily check-in — see family activity, log today's workout, glance at your own snapshot. |
-| **Board** | Comparison — see the full family ranking for a period, spot who's most active. |
+| **Home** | Daily check-in — see group activity, log today's workout, glance at your own snapshot. |
+| **Board** | Comparison — see the full group ranking for a period, spot who's most active. |
 | **Profile** | Reflection — review your own full history, streak calendar, and activity mix. |
 | **Settings** | Control — manage notification/logging preferences, sign out. |
 
@@ -85,14 +89,13 @@ not a silent toggle.
 - Multiple leaderboard periods (e.g. quarter/year toggle)
 - Per-activity-type breakdown on Profile
 - Editing a logged entry after submission
-- Notification when a family member logs
+- Push notification when a groupmate logs
 
 **Future / Explicitly Out of Scope for MVP**
 - Wearable / auto-logging integration
-- Invite flow for adding or removing family members
+- Removing members / richer group admin tools (invite-code sharing and reset are shipped)
 - Push notification infrastructure and sound preferences
 - Native mobile app
-- Multiple family groups
 - Coach-assigned or planned workouts (ruled out early — this product is
   about shared accountability, not coaching)
 

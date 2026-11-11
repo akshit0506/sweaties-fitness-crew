@@ -190,7 +190,7 @@ AppShell
   used everywhere else, so switches don't look like a foreign control.
   **Note for the design/product owner:** a "sign in as X" model implies single-device,
   single-user-at-a-time sessions per person — confirm this matches how account
-  switching should actually work for a shared family app before building it.
+  switching should actually work for a shared crew app before building it.
 - **Lightweight social feedback** (kudos = one-tap acknowledgment, comments =
   optional thread) attached per feed entry — kept visually secondary to the
   entry's own stats (smaller, below the main content, muted until given).

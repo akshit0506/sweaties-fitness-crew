@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ActivityType } from "@/lib/types";
 
 /**
- * The full family-wide activity type list — the 5 seeded defaults plus any
+ * The full app-wide activity type list — the 5 seeded defaults plus any
  * "Add Your Own" customs anyone has ever added (activity_types.created_by
  * set). Previously the defaults were a hardcoded constant
  * (lib/activityTypes.ts) and customs were a browser-session-only array in

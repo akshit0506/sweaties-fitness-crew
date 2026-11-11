@@ -1,5 +1,13 @@
 # Backend Plan — Supabase Integration
 
+> **SweaTies note:** this document is a historical log written when the app was
+> the single-roster "Family Workout". It records the original schema/RLS architecture decisions. The app is now **SweaTies** —
+> self-serve sign-up, private groups and invite codes (see
+> `supabase/migrations/20260801100000_groups.sql` and `README.md`). Where this
+> file says "family" or describes claiming a pre-seeded roster, read it as the
+> earlier design.
+
+
 Design document only — no implementation code. See `PRODUCT.md` (why),
 `DESIGN.md` (visual language), `ROADMAP.md` (sequencing) for context this
 builds on.

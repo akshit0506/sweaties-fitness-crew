@@ -1,4 +1,7 @@
-# Roadmap
+# Roadmap — SweaTies
+
+> Milestones below v2 are a historical log from when the app was the
+> single-roster "Family Workout"; they describe the earlier design.
 
 This is the living source of truth for where the product is headed. Update
 it as milestones ship, priorities shift, or new decisions get made — it
@@ -11,8 +14,9 @@ language. This document is about **order and sequencing**, not the "what/why"
 
 ## Vision
 
-Help a 7-person extended family stay consistent with working out by making
-each other's effort visible — calm, simple, and motivating rather than
+Help small, closed groups — friends, teammates, colleagues (it started as a
+7-person family) — stay consistent with working out by making each other's
+effort visible — calm, simple, and motivating rather than
 competitive or judgmental. Accountability through visibility, not pressure.
 
 ## Product Principles
@@ -373,13 +377,30 @@ Still open:
 - [ ] Desktop layout untested beyond the mobile-first default
 - [ ] Real proof-photo upload still not wired up (form UI placeholder only)
 
+## SweaTies v2 — private groups (shipped)
+
+Rebrand from "Family Workout"/"Octopus" to **SweaTies**, and from a fixed
+roster to a Strava-style closed social app.
+
+- [x] Self-serve sign-up (name + phone) replaces roster claiming
+- [x] Private groups with invite codes, `/join/<code>` links, multi-group
+      switching, admin code reset; visibility scoped to shared groups in RLS
+- [x] Quarterly, yearly (this/last) and all-time leaderboards; real ranking
+      history on Profile
+- [x] Realtime feed updates, comment emoji reactions, kudos chime
+- [x] Celebration overlay and shareable workout card
+- [x] Existing roster migrated into a "Family" group
+- [ ] SMS OTP or PIN for sign-in (phone number alone is a weak credential)
+- [ ] Push notifications for groupmate workouts
+- [ ] Member removal / richer admin tools; non-+91 phone numbers
+
 ## Future Improvements
 
 Longer-horizon, beyond MVP:
 
 - [ ] Wearable / auto-logging integration
 - [ ] Native mobile app
-- [ ] Multi-family / multi-group support
+- [x] Multi-group support — shipped in SweaTies v2 (see below)
 - [ ] Data export
 - [ ] Multi-timezone support
 - [ ] Push notification infrastructure at scale

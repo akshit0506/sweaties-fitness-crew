@@ -1,7 +1,7 @@
-# Deployment
+# Deployment — SweaTies
 
 How to take this from "running on `npx supabase start` on one laptop" to
-"the actual family can open it on their phones," starting from a
+"your crew can open it on their phones," starting from a
 completely clean production database — no demo history, no test
 comments, no seeded kudos. See `SUPABASE_SETUP.md` for local dev (still
 the right place to iterate on schema/RLS), `BACKEND_PLAN.md` for the
@@ -16,7 +16,7 @@ Two separate SQL files, deliberately not one file with a flag:
 |---|---|---|
 | **Audience** | Local development only | A brand-new hosted project, once |
 | **Run by** | `supabase db reset` / `supabase start`, automatically (`config.toml`'s `[db.seed]`) | An admin, manually, once — never automatic |
-| **Contains** | 7 athletes, ~30–45 days of realistic activity history, comments, kudos, two demo custom activity types (Cardio, Pickleball) | 7 athletes (unclaimed, `phone_number` null), the 5 default activity types |
+| **Contains** | A "Demo Crew" group (invite code `DEMOCREW01`) with 7 athletes, ~30–45 days of realistic activity history, comments, kudos, two demo custom activity types (Cardio, Pickleball) | The 5 default activity types |
 | **Never contains** | — | Any activity, comment, kudos, or custom activity type |
 
 Why two files instead of one seed with a `--demo` flag: `supabase db push`
@@ -44,8 +44,12 @@ npx supabase db push
 ```
 
 `db push` applies every file in `supabase/migrations/*` — schema, indexes,
-RLS policies, the storage bucket, and the `claim_athlete_with_phone()` /
-`login_with_phone()` phone-auth functions. It does **not** run any seed
+RLS policies, the storage bucket, the groups/invite-code tables and RPCs
+(`sign_up_with_phone()`, `sign_in_with_phone()`, `create_group()`,
+`join_group()`, `leave_group()`, `rotate_invite_code()`), comment reactions
+and the Realtime publication. If the database already holds a roster from
+the old single-group app, `20260801100000_groups.sql` moves everyone into a
+group called "Family" so nobody loses their feed. It does **not** run any seed
 file (neither `seed.sql` nor `production_bootstrap.sql`) — that's the
 next, separate step.
 
@@ -55,32 +59,26 @@ Open Studio's SQL editor for the hosted project (or connect with `psql`
 using the project's connection string) and run the entire contents of
 `supabase/production_bootstrap.sql`.
 
-This inserts exactly: the 7 real athlete rows (unclaimed, `phone_number`
-left `null` — whatever number a person types into `/login` when they
-claim their profile becomes that row's permanent number via
-`claim_athlete_with_phone()`), and the 5 default activity types the
-logging form needs to have something to show on day one. Nothing else —
-no activities, no comments, no kudos.
+This inserts exactly the 5 default activity types the logging form needs
+to have something to show on day one. There is no roster to seed: people
+sign up in the app themselves and create or join groups with invite codes.
+(Skip this step if the table already has the 5 types, e.g. a database
+upgraded from the single-group app.)
 
 **Do not run `supabase/seed.sql` against production.** It's the local dev
-file — realistic-looking activity history, comments, and kudos that would
-have your family staring at a fabricated month of workouts (and, worse, a
-fabricated leaderboard ranking) that never happened. If this ever runs
-against a hosted project by mistake, the fix is to manually delete the
-affected rows from `activities` (`comments`/`kudos`/`activity_entry_types`
-cascade-delete with them) — there's no automated undo.
+file — a demo group with realistic-looking activity history, comments, and
+kudos that would have your crew staring at a fabricated month of workouts
+(and a fabricated leaderboard) that never happened. If this ever runs
+against a hosted project by mistake, delete the "Demo Crew" group and the
+seeded athletes from Studio — `activities`, `comments`, `kudos` and
+`activity_entry_types` cascade with them. There's no automated undo.
 
 Verify before moving on:
 
 ```sql
-select name, auth_user_id is not null as claimed from public.athletes order by name;
--- expect: 7 rows, all claimed = false
--- note: phone_number is intentionally not selectable by anon/authenticated
--- roles (see 20260726090000_phone_auth.sql) — query it as the Postgres
--- owner role in Studio's SQL editor if you ever need to confirm it directly.
-
-select count(*) from public.activities; -- expect: 0
-select count(*) from public.activity_types; -- expect: 5
+select count(*) from public.activity_types; -- expect: 5 (fresh project)
+select count(*) from public.groups;         -- expect: 0 (fresh) or 1 ("Family", upgraded)
+select count(*) from public.activities;     -- expect: 0 (fresh project)
 ```
 
 ## 4. Configure authentication
@@ -94,26 +92,25 @@ select count(*) from public.activity_types; -- expect: 5
    tune, no OTP delivery to worry about.
 2. **URL Configuration** (Studio → Authentication → URL Configuration):
    set **Site URL** to your real production URL (e.g.
-   `https://family-workout.vercel.app`). No redirect URL to add beyond
+   `https://family-workout-navy.vercel.app`). No redirect URL to add beyond
    that — there's no email link or OAuth callback in this flow.
 
-> **Phone numbers are intentionally immutable, and act as a shared secret,
-> not proof of ownership.** Once `claim_athlete_with_phone()` succeeds,
-> `athletes.phone_number` is permanent for that row — there's no "change
-> your number" flow, by design (mirrors the email-immutability decision
-> from the previous auth model). No OTP/SMS code is ever sent to verify
-> the number actually belongs to the person entering it — see
-> `ROADMAP.md`'s Milestone 13 notes and this file's "Known limitations"
-> for the accepted tradeoff behind that choice. If someone claims the
-> wrong profile or mistypes their number, the only fix today is an admin
-> manually clearing `auth_user_id` and `phone_number` back to `null` for
-> that row in Studio so they can claim again.
+> **Phone numbers are a shared secret, not proof of ownership.** Sign-up
+> (`sign_up_with_phone()`) creates the athlete row with the name and number
+> the person typed; `sign_in_with_phone()` re-links a new session to that
+> row from any device. No OTP/SMS code is ever sent, so anyone who *knows*
+> a member's number can sign in as them — an accepted trade-off for a small
+> trusted crew (see `ROADMAP.md`). Numbers are never readable by other
+> users (column-level grant on `athletes`). If someone mistypes their
+> number, an admin has to fix it in Studio; there is no in-app edit.
+> Group access is by invite code: anyone holding a group's code can join
+> it, so admins can reset the code in Settings if it leaks.
 
 ## 5. Configure environment variables
 
 Just two variables, both safe to expose to the browser (that's what RLS
 is for) — there's no service-role key to manage, since sign-up and
-profile claiming are self-serve (no admin script needs elevated access):
+group creation are self-serve (no admin script needs elevated access):
 
 | Variable | Where it's used | Where it's read from |
 |---|---|---|
@@ -140,39 +137,35 @@ the manual version of the automated end-to-end passes run locally
 throughout development (see `FRONTEND_INTEGRATION.md`):
 
 **First-time production state**
-- [ ] Database matches the bootstrap exactly: 7 athletes, all unclaimed;
-      5 activity types; zero activities/comments/kudos (re-run the §3
-      verification queries against production directly if there's any
-      doubt)
+- [ ] Database matches the bootstrap: 5 activity types, zero
+      activities/comments/kudos on a fresh project (or the "Family" group
+      with its history on an upgraded one)
+- [ ] A brand-new account with no group lands on `/onboarding`, not an
+      error page
 - [ ] Home shows an empty feed with the "no activity yet" message, not a
       blank section
-- [ ] Board loads without error and shows all 7 athletes at 0 workout days
-- [ ] Any athlete's Profile shows a 0-day streak, not an error
+- [ ] Board loads and shows the group's members at 0 workout days
 
-**Claiming and auth**
+**Sign-up, sign-in and groups**
 - [ ] Visiting the production URL while signed out redirects to `/login`
-      and shows the full roster (no OTP/email step of any kind)
-- [ ] First use: pick a name, enter a 10-digit number — the `+91` prefix
-      is fixed/non-editable and Continue stays disabled until exactly 10
-      digits are entered
-- [ ] A confirmation dialog appears before the profile is actually
-      claimed, naming the correct person and the number; cancelling it
-      does not claim anything
-- [ ] Confirming shows the success screen ("linked to this device..."),
-      then lands on Home showing the right person's name
-- [ ] Picking that same (now-claimed) name again from a different
-      browser/session, with the correct number, signs in as that person
-      rather than re-claiming
-- [ ] Picking a claimed name with the *wrong* number shows a clear error
-      and does not sign in
-- [ ] Refreshing the page keeps the session (no bounce back to `/login`)
-- [ ] Closing and reopening the browser (not just refreshing) keeps the
-      session too
-- [ ] Sign out, then sign back in by picking your name and re-entering
-      your number — lands back on Home as the right person
-- [ ] Querying `public.athletes` as the `anon` or `authenticated` role
-      never returns `phone_number` (column-level grant, not just RLS) —
-      confirms numbers aren't exposed to other family members' sessions
+- [ ] "I'm new": name + 10-digit number (`+91` fixed, button disabled until
+      exactly 10 digits) creates the account and lands on `/onboarding`
+- [ ] Creating a group lands on Home as admin; Settings shows its invite
+      code and a working Invite/share action
+- [ ] A second account joins with the code (or the `/join/<code>` link —
+      signed out, it should bounce through `/login` and back) and sees the
+      first account's workouts
+- [ ] A third account that is **not** in the group cannot see those
+      workouts (try a direct API call, not just the UI)
+- [ ] Wrong or reset invite codes show a clear error
+- [ ] "Sign in" with a registered number signs in from a new browser;
+      an unregistered number shows a clear error
+- [ ] Refreshing and reopening the browser keep the session
+- [ ] Sign out, then sign back in with your number — lands on Home
+- [ ] Querying `public.athletes` as `anon`/`authenticated` never returns
+      `phone_number`
+- [ ] Switching groups in Settings changes the feed, board and member
+      count; leaving the last group returns to `/onboarding`
 
 **First real workout and derived stats**
 - [ ] Add an activity, confirm it appears in the feed after a hard refresh
@@ -189,7 +182,7 @@ throughout development (see `FRONTEND_INTEGRATION.md`):
 **Multi-user and sign-out**
 - [ ] Sign out; confirm you're bounced back to `/login` and a hard refresh
       of `/` doesn't leak the previous session's data
-- [ ] Repeat sign-in/sign-out as a **second** family member; confirm their
+- [ ] Repeat sign-in/sign-out as a **second** member; confirm their
       name, streak, and feed are theirs, not the first person's
 - [ ] Confirm you still can't edit someone else's activity as the second
       person — this was verified against local RLS already; a quick sanity
@@ -230,7 +223,7 @@ as §8.
       registers under `next dev`, so local development is unaffected.
 - [x] "Add to Home Screen" verified functionally in Chrome (desktop +
       simulated Android) and WebKit via Playwright — **still do a real
-      on-device pass** (see §10) before telling the family to install it;
+      on-device pass** (see §10) before telling your crew to install it;
       emulation is strong evidence, not a substitute for one real iPhone
       and one real Android phone.
 - [x] Confirmed via Playwright + CDP safe-area-inset emulation: Masthead,
@@ -284,8 +277,8 @@ verification pass.
   fallback, not prior personalized pages.** The service worker
   deliberately does not cache full page HTML for Home/Board/Profile,
   because every `(main)` route is `force-dynamic` and per-session; caching
-  a rendered response risks one family member's device later showing a
-  stale snapshot of a *different* family member's data on a shared
+  a rendered response risks one member's device later showing a
+  stale snapshot of a *different* member's data on a shared
   device. Practical effect: opening a previously-visited screen while
   fully offline shows the `/offline` page, not that screen's last-seen
   content, even though the screen's static assets (JS/CSS/icons) are
@@ -294,7 +287,7 @@ verification pass.
   automatic "install this app" banner for any website — installation is
   always a manual Share → "Add to Home Screen" action. There's no code
   path that can change this; it's a platform restriction. Worth a line in
-  the family-facing rollout instructions.
+  the crew-facing rollout instructions.
 - **iOS service worker support has real gaps** even where installed:
   background sync and push notifications are unsupported on iOS
   regardless of this app's own code, and Safari has historically been
@@ -309,11 +302,11 @@ verification pass.
   (Playwright's Chromium/WebKit engines + device-descriptor emulation and
   CDP-level safe-area-inset overrides), not a real physical iPhone or
   Android device. §10 below is the real-hardware pass that should happen
-  once before broad family rollout.
+  once before broad rollout.
 
 ## 9. Real-device PWA verification
 
-Do this once, on the two actual device/browser combinations the family
+Do this once, on the two actual device/browser combinations your crew
 will use, before telling everyone to install it (the automated Playwright
 pass covers functional correctness; it cannot confirm how the OS itself
 renders the install prompt, splash screen, or status bar on real
