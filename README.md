@@ -29,6 +29,14 @@ and climb the leaderboard. Accountability through visibility, not pressure.
 - **Installable PWA** — add-to-home-screen, standalone launch, offline
   app-shell caching, safe-area-aware layout.
 
+## Screenshots
+
+Demo data from the seeded "FRENS" crew (invite code `DEMOCREW01` locally).
+
+| Home | Board | Profile | Settings |
+|---|---|---|---|
+| <img src="docs/screenshots/home.png" width="200" alt="Home feed"> | <img src="docs/screenshots/board.png" width="200" alt="Quarterly leaderboard"> | <img src="docs/screenshots/profile.png" width="200" alt="Profile and streaks"> | <img src="docs/screenshots/settings.png" width="200" alt="Group settings and invite code"> |
+
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org) (App Router, Turbopack)
