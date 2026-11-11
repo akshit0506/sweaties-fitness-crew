@@ -1,18 +1,14 @@
 # Design System
 
-Reverse-engineered from reference screenshots in `docs/reference/`. This describes a
-**visual language and interaction pattern**, not a literal copy — no proprietary
-names, wordmarks, or exact assets from the reference are reused. Hex values below
-are close approximations read off the screenshots, not sampled from a source file;
-treat them as a starting palette to refine, not gospel.
-
-No code yet. This is the spec code will be built against once we get to implementation.
+The visual language and interaction patterns used by SweaTies. Hex values below are
+close approximations; `src/app/globals.css` holds the actual tokens and is the source of
+truth. Treat this document as the rationale behind them.
 
 ---
 
 ## 1. Design Philosophy
 
-The reference app reads as **"scoreboard meets logbook"** — a deliberately blunt,
+SweaTies reads as **"scoreboard meets logbook"** — a deliberately blunt,
 stamped/printed aesthetic (heavy type, hard black borders, flat colors) crossed with
 a warm, hand-kept-ledger feel (cream paper background, a serif accent for personal
 notes). Two moods coexist on purpose:
@@ -97,7 +93,7 @@ anchor of this system — bigger than any headline except the masthead.
 
 ## 4. Spacing & Layout
 
-- **Mobile-first, single column.** Reference is phone-width only; see §8 for how
+- **Mobile-first, single column.** The app is phone-width only; see §8 for how
   this should extend to desktop.
 - **Card padding:** generous, consistent inner padding (~16–20px) regardless of
   card content density.
@@ -152,8 +148,8 @@ AppShell
   e.g. an unselected toggle). The filled-vs-outline contrast is the system's
   general way of showing on/active vs. off/inactive — reuse it for toggles,
   tags, and buttons alike rather than inventing a new state style per component.
-- **Avatar:** circle, thin black ring border, single capital initial, no photos
-  in the reference set. Stacks (overlapping circles) represent multiple people
+- **Avatar:** circle, thin black ring border, single capital initial, no photos.
+  Stacks (overlapping circles) represent multiple people
   in a compact space (e.g. "who gave kudos").
 - **Podium:** the one skeuomorphic/decorative element in an otherwise flat
   system (gradient medallions with a glossy highlight). Reserve this kind of
@@ -165,7 +161,7 @@ AppShell
 ## 6. Navigation Pattern
 
 - **Bottom tab bar**, exactly 3 destinations, flat uppercase text labels (no
-  icons in the reference). Active tab is indicated by a bordered rectangle
+  icons). Active tab is indicated by a bordered rectangle
   drawn around the label — not a fill, not an underline, not a color change.
   This is a distinctive, low-noise selection indicator worth keeping as-is.
 - **Horizontal segmented control** for switching time periods (e.g. quarter/
@@ -227,12 +223,10 @@ staying phone-width everywhere.
 - Exact hex values as final/locked — treat §2 as a starting point to test for
   contrast/accessibility (some combinations, e.g. olive-on-cream, should be
   checked against WCAG AA before use in real UI).
-- Icon set — reference uses emoji as placeholder iconography (🔥, 👏, 💬, ⚙️);
+- Icon set — the app uses emoji as placeholder iconography (🔥, 👏, 💬, ⚙️);
   a real icon set (e.g. an outline icon library) should replace these
   consistently rather than mixing emoji and icons.
 - Font family names — described by role/character (e.g. "heavy condensed
-  grotesque") rather than a specific commercial typeface, since the reference
-  source's exact font isn't verifiable from screenshots alone. Pick actual
-  fonts that match the described character during implementation.
-- Any literal product name, logo, or wordmark from the reference — intentionally
-  excluded per your instruction not to copy proprietary branding.
+  grotesque") rather than a specific typeface. The shipped app uses Anton (display),
+  Roboto Slab (accent) and Geist (body) — see `src/app/layout.tsx`.
+- A logo or wordmark — the app currently uses its name set in the display face.
