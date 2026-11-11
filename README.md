@@ -115,8 +115,8 @@ This repo is documentation-heavy on purpose — the "why," not just the
 
 ## Deployment
 
-Live at <https://sweaties-fitness.vercel.app> (the Vercel project is still
-named `family-workout`, a legacy name).
+Live at <https://sweaties-fitness.vercel.app> (Vercel project
+`sweaties-fitness-crew`).
 `DEPLOYMENT.md` has the full runbook — hosted Supabase project setup,
 migrations, auth configuration, Vercel deployment and a PWA checklist.
 
