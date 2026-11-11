@@ -1,4 +1,10 @@
-# Product Specification — Family Workout
+# Product Specification — SweaTies
+
+> **Update (v2):** the app was originally a single fixed 7-person family
+> roster ("Family Workout"/"Octopus"). It is now **SweaTies**: users sign up
+> themselves and create or join private groups via invite codes; feeds and
+> leaderboards are scoped per group. Sections below that describe a fixed
+> roster, a single group, or "family" members predate this change.
 
 ## 1. Problem & Goal
 

@@ -1,11 +1,11 @@
-// Family Workout service worker.
+// SweaTies service worker.
 //
 // Scope, deliberately: cache the static app shell (JS/CSS bundles, fonts,
 // icons, manifest) so the installed app launches instantly and survives
 // being offline at all. Do NOT cache Supabase requests (cross-origin,
 // skipped entirely below) or personalized page HTML (this app's pages are
 // all force-dynamic and per-session; caching full navigation responses
-// would risk one family member's device serving a stale snapshot of
+// would risk one member's device serving a stale snapshot of
 // another's data on a shared device — not worth it for what's explicitly
 // out of scope anyway: "offline workout syncing is not required"). Writes
 // while offline aren't queued — they fail immediately and surface through
@@ -14,7 +14,7 @@
 //
 // Bump this on any change to what's precached below — activate() uses it
 // to evict every older cache in one pass.
-const CACHE_VERSION = "family-workout-v2";
+const CACHE_VERSION = "sweaties-v3";
 
 const PRECACHE_URLS = [
   "/offline",

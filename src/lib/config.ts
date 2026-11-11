@@ -2,6 +2,6 @@
 // by the root layout's metadata, the PWA manifest, the login screen, and
 // the global error fallback, so a rename never requires hunting down every
 // hardcoded string individually.
-export const APP_NAME = "Octopus";
-export const APP_SHORT_NAME = "Octopus";
-export const APP_DESCRIPTION = "Shared workout tracking for the family.";
+export const APP_NAME = "SweaTies";
+export const APP_SHORT_NAME = "SweaTies";
+export const APP_DESCRIPTION = "A private workout feed and leaderboard for your crew — friends, teammates, colleagues.";

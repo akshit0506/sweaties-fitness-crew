@@ -6,14 +6,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
+import { refreshAppData } from "@/app/actions";
+import { Celebration, type CelebrationData } from "@/components/celebration/Celebration";
 import { ActivityModal } from "@/components/activity/ActivityModal";
 import { DayDetailsSheet } from "@/components/profile/DayDetailsSheet";
 import { Toast } from "@/components/ui/Toast";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { parseDateKey, toDateKey } from "@/lib/date";
+import { playKudosSound } from "@/lib/sound";
 import { ACTIVITY_PHOTOS_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/photo";
 import {
   buildTrailingWindow,
@@ -85,6 +90,7 @@ type AppState = {
   dayDetailsDateKey: string | null;
 
   toggleKudos: (entryId: string) => void;
+  toggleReaction: (entryId: string, commentId: string, emoji: string) => void;
   addComment: (entryId: string, text: string) => void;
   addCustomActivityType: (label: string) => Promise<string>;
   saveActivity: (values: ActivityFormValues) => void;
@@ -108,6 +114,8 @@ type AppStateProviderProps = {
   initialComments: Record<string, Comment[]>;
   periodDaysElapsed: number;
   initialActivityTypes: ActivityType[];
+  groupId: string;
+  groupName: string;
   children: ReactNode;
 };
 
@@ -119,14 +127,22 @@ export function AppStateProvider({
   initialComments,
   periodDaysElapsed,
   initialActivityTypes,
+  groupId,
+  groupName,
   children,
 }: AppStateProviderProps) {
+  const router = useRouter();
   const [entries, setEntries] = useState(initialEntries);
   const [commentsByEntryId, setCommentsByEntryId] = useState(initialComments);
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>(initialActivityTypes);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activityModal, setActivityModal] = useState<ActivityModalState>(null);
   const [dayDetailsDateKey, setDayDetailsDateKey] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  // Rows written by this client that the server may not have committed yet.
+  // A realtime refetch must not make them vanish mid-flight.
+  const pendingEntryIds = useRef(new Set<string>());
+  const pendingCommentIds = useRef(new Set<string>());
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -164,6 +180,7 @@ export function AppStateProvider({
       const entry = entries.find((e) => e.id === entryId);
       if (!entry) return;
       const hasGiven = entry.kudosFromAthleteIds.includes(currentUser.id);
+      if (!hasGiven) playKudosSound();
 
       setEntries((prev) =>
         prev.map((e) =>
@@ -217,7 +234,9 @@ export function AppStateProvider({
         athleteId: currentUser.id,
         text: trimmed,
         postedAt: new Date().toISOString(),
+        reactions: {},
       };
+      pendingCommentIds.current.add(id);
 
       setCommentsByEntryId((prev) => {
         const existing = prev[entryId] ?? [];
@@ -229,6 +248,7 @@ export function AppStateProvider({
         .from("comments")
         .insert({ id, activity_id: entryId, athlete_id: currentUser.id, text: trimmed })
         .then(({ error }) => {
+          pendingCommentIds.current.delete(id);
           if (!error) return;
           setCommentsByEntryId((prev) => {
             const existing = prev[entryId] ?? [];
@@ -238,6 +258,53 @@ export function AppStateProvider({
         });
     },
     [currentUser.id, showToast]
+  );
+
+  const toggleReaction = useCallback(
+    (entryId: string, commentId: string, emoji: string) => {
+      const mutate = (add: boolean) =>
+        setCommentsByEntryId((prev) => ({
+          ...prev,
+          [entryId]: (prev[entryId] ?? []).map((comment) => {
+            if (comment.id !== commentId) return comment;
+            const current = comment.reactions[emoji] ?? [];
+            const next = add
+              ? current.includes(currentUser.id)
+                ? current
+                : [...current, currentUser.id]
+              : current.filter((id) => id !== currentUser.id);
+            const reactions = { ...comment.reactions };
+            if (next.length > 0) reactions[emoji] = next;
+            else delete reactions[emoji];
+            return { ...comment, reactions };
+          }),
+        }));
+
+      const hasReacted = (commentsByEntryId[entryId] ?? [])
+        .find((comment) => comment.id === commentId)
+        ?.reactions[emoji]?.includes(currentUser.id);
+
+      mutate(!hasReacted);
+
+      const supabase = createBrowserSupabaseClient();
+      const write = hasReacted
+        ? supabase
+            .from("comment_reactions")
+            .delete()
+            .eq("comment_id", commentId)
+            .eq("athlete_id", currentUser.id)
+            .eq("emoji", emoji)
+        : supabase
+            .from("comment_reactions")
+            .insert({ comment_id: commentId, athlete_id: currentUser.id, emoji });
+
+      write.then(({ error }) => {
+        if (!error) return;
+        mutate(Boolean(hasReacted));
+        showToast("Couldn't save that reaction — try again");
+      });
+    },
+    [commentsByEntryId, currentUser.id, showToast]
   );
 
   const addCustomActivityType = useCallback(
@@ -429,9 +496,24 @@ export function AppStateProvider({
         };
 
         const previousEntries = entries;
+        pendingEntryIds.current.add(id);
         setEntries((prev) => [newEntry, ...prev]);
-        showToast("Activity logged");
         setActivityModal(null);
+
+        if (isToday) {
+          const keys = getLoggedDateKeys([newEntry, ...entries], currentUser.id);
+          setCelebration({
+            name: currentUser.name,
+            groupName,
+            activities: values.activities,
+            durationLabel: values.durationLabel,
+            streakDays: computeCurrentStreak(keys, now),
+            daysThisPeriod: countLoggedDaysInWindow(keys, now, periodDaysElapsed),
+            periodLabel: initialSummary.periodLabel,
+          });
+        } else {
+          showToast("Activity logged");
+        }
 
         (async () => {
           const { error: insertError } = await supabase.from("activities").insert({
@@ -451,15 +533,30 @@ export function AppStateProvider({
           }
         })()
           .then(() => {
+            pendingEntryIds.current.delete(id);
             uploadNewPhotos(id, currentUser.id, values.newPhotos, 0);
           })
           .catch(() => {
+            pendingEntryIds.current.delete(id);
+            setCelebration(null);
             setEntries(previousEntries);
             showToast("Couldn't save that activity — try again");
           });
       }
     },
-    [activityModal, activityTypes, currentUser.id, entries, persistPhotoRemoval, showToast, uploadNewPhotos]
+    [
+      activityModal,
+      activityTypes,
+      currentUser.id,
+      currentUser.name,
+      entries,
+      groupName,
+      initialSummary.periodLabel,
+      periodDaysElapsed,
+      persistPhotoRemoval,
+      showToast,
+      uploadNewPhotos,
+    ]
   );
 
   const deleteActivity = useCallback(
@@ -502,6 +599,92 @@ export function AppStateProvider({
     [entries, commentsByEntryId, showToast]
   );
 
+  // Live updates: when a groupmate logs, reacts or comments, refetch the
+  // feed. Own writes are skipped (already applied optimistically), bursts
+  // are debounced into one refetch, and returning to the app refetches too
+  // since a backgrounded PWA's socket may have been suspended.
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastRefresh = 0;
+    let cancelled = false;
+
+    const refresh = async () => {
+      lastRefresh = Date.now();
+      try {
+        const fresh = await refreshAppData();
+        if (cancelled) return;
+
+        setEntries((prev) => {
+          const prevById = new Map(prev.map((entry) => [entry.id, entry]));
+          const freshIds = new Set(fresh.entries.map((entry) => entry.id));
+          const merged = fresh.entries.map((entry) => {
+            const uploading = (prevById.get(entry.id)?.photos ?? []).filter((p) => p.uploading);
+            return uploading.length > 0
+              ? { ...entry, photos: [...entry.photos, ...uploading] }
+              : entry;
+          });
+          const pending = prev.filter(
+            (entry) => pendingEntryIds.current.has(entry.id) && !freshIds.has(entry.id)
+          );
+          return [...pending, ...merged];
+        });
+
+        setCommentsByEntryId((prev) => {
+          const next = { ...fresh.comments };
+          // Keep comments this client posted that the server hasn't confirmed yet.
+          for (const [entryId, list] of Object.entries(prev)) {
+            for (const comment of list) {
+              if (!pendingCommentIds.current.has(comment.id)) continue;
+              if ((next[entryId] ?? []).some((c) => c.id === comment.id)) continue;
+              next[entryId] = [...(next[entryId] ?? []), comment];
+            }
+          }
+          return next;
+        });
+        // Re-render server components (board, masthead counts, rank).
+        router.refresh();
+      } catch {
+        // Offline or transient — the next event or focus will retry.
+      }
+    };
+
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(refresh, 600);
+    };
+
+    const onChange = (payload: { new: Record<string, unknown> }) => {
+      // Skip echoes of this user's own inserts/updates.
+      const author = payload.new?.athlete_id;
+      if (author && author === currentUser.id) return;
+      schedule();
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastRefresh > 5000) schedule();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (data.session) supabase.realtime.setAuth(data.session.access_token);
+      channel = supabase.channel(`sweaties-${groupId}`);
+      for (const table of ["activities", "kudos", "comments", "comment_reactions"]) {
+        channel.on("postgres_changes", { event: "*", schema: "public", table }, onChange);
+      }
+      channel.subscribe();
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [currentUser.id, groupId, router]);
+
   const openAddActivity = useCallback((dateKey: string) => {
     setActivityModal({ mode: "add", dateKey });
   }, []);
@@ -525,6 +708,7 @@ export function AppStateProvider({
     activityModal,
     dayDetailsDateKey,
     toggleKudos,
+    toggleReaction,
     addComment,
     addCustomActivityType,
     saveActivity,
@@ -543,6 +727,7 @@ export function AppStateProvider({
       <DayDetailsSheet />
       <ActivityModal />
       <Toast message={toastMessage} />
+      <Celebration data={celebration} onClose={() => setCelebration(null)} />
     </AppStateContext.Provider>
   );
 }

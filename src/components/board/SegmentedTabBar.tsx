@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import type { PeriodOption } from "@/lib/types";
 import { INTERACTIVE_CLASSES } from "@/lib/interactive";
 
 type SegmentedTabBarProps = {
   periods: PeriodOption[];
   currentPeriodId: string;
+  selectedId: string;
+  onSelect: (periodId: string) => void;
 };
 
-export function SegmentedTabBar({ periods, currentPeriodId }: SegmentedTabBarProps) {
-  const [selectedId, setSelectedId] = useState(currentPeriodId);
-
+export function SegmentedTabBar({
+  periods,
+  currentPeriodId,
+  selectedId,
+  onSelect,
+}: SegmentedTabBarProps) {
   return (
     <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
       {periods.map((period) => {
@@ -22,7 +26,7 @@ export function SegmentedTabBar({ periods, currentPeriodId }: SegmentedTabBarPro
           <button
             key={period.id}
             type="button"
-            onClick={() => setSelectedId(period.id)}
+            onClick={() => onSelect(period.id)}
             aria-pressed={isSelected}
             className={`flex shrink-0 items-center gap-1.5 rounded-lg border-2 px-3.5 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${INTERACTIVE_CLASSES} ${
               isSelected

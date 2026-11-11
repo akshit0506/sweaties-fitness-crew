@@ -1,6 +1,13 @@
 import { cache } from "react";
 import { startOfDay } from "@/lib/date";
 import { computeCompetitionRanks } from "@/lib/ranking";
+import {
+  buildPeriods,
+  currentPeriodIdFor,
+  rankAthletesForPeriod,
+} from "@/lib/periods";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getActiveGroupMembers } from "@/lib/data/groups";
 import { computeCurrentStreak, countLoggedDaysInWindow, getLoggedDateKeys } from "@/lib/stats";
 import type { LeaderboardRow, PeriodOption, PeriodProgress, PeriodRankSummary } from "@/lib/types";
 import {
@@ -15,29 +22,13 @@ function quarterIndexOf(date: Date): number {
   return Math.floor(date.getMonth() / 3);
 }
 
-// Periods are pure calendar math, not user data — no Supabase call needed.
-// Replaces what used to be hardcoded mock values ("Q3", day 24 of 92) with
-// whatever quarter "today" actually falls in, so this never goes stale.
+// Periods are pure calendar math, not user data — see lib/periods.ts.
 export const getPeriodOptions = cache(async function getPeriodOptions(): Promise<PeriodOption[]> {
-  const today = new Date();
-  const year = today.getFullYear();
-  const currentQuarterIndex = quarterIndexOf(today);
-
-  const options: PeriodOption[] = [];
-  for (let quarter = 0; quarter <= currentQuarterIndex; quarter++) {
-    options.push({
-      id: `q${quarter + 1}-${year}`,
-      label: `Q${quarter + 1} '${String(year).slice(2)}`,
-    });
-  }
-  options.push({ id: String(year), label: String(year) });
-  options.push({ id: String(year - 1), label: String(year - 1) });
-  return options;
+  return buildPeriods(new Date()).map(({ id, label }) => ({ id, label }));
 });
 
 export const getCurrentPeriodId = cache(async function getCurrentPeriodId(): Promise<string> {
-  const today = new Date();
-  return `q${quarterIndexOf(today) + 1}-${today.getFullYear()}`;
+  return currentPeriodIdFor(new Date());
 });
 
 export const getPeriodProgress = cache(async function getPeriodProgress(): Promise<PeriodProgress> {
@@ -92,31 +83,57 @@ export const getLeaderboard = cache(async function getLeaderboard(): Promise<Lea
   }
 });
 
-// Deeper historical ranking (past quarters) is an open decision per
-// BACKEND_PLAN.md §8 — honestly reporting null/0 for non-current periods
-// rather than inventing a ranking system this milestone didn't ask for.
+/**
+ * Every logged-at timestamp for each member of the active group, all-time
+ * (paginated — PostgREST caps a response at 1000 rows). The Board and the
+ * profile's rankings history rank any period client- or server-side from
+ * this one small payload instead of a query per period.
+ */
+export const getLoggedAtByAthlete = cache(async function getLoggedAtByAthlete(): Promise<
+  Record<string, string[]>
+> {
+  const members = await getActiveGroupMembers();
+  const result: Record<string, string[]> = Object.fromEntries(members.map((m) => [m.id, []]));
+  if (members.length === 0) return result;
+
+  const supabase = await createServerSupabaseClient();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("activities")
+      .select("athlete_id, logged_at")
+      .in("athlete_id", members.map((m) => m.id))
+      .order("logged_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    for (const row of data ?? []) result[row.athlete_id]?.push(row.logged_at);
+    if ((data?.length ?? 0) < pageSize) break;
+  }
+  return result;
+});
+
 export const getMyPeriodRankings = cache(async function getMyPeriodRankings(): Promise<
   PeriodRankSummary[]
 > {
   try {
-    const [periodOptions, currentPeriodId, leaderboard, currentAthlete] = await Promise.all([
-      getPeriodOptions(),
-      getCurrentPeriodId(),
-      getLeaderboard(),
+    const [loggedAt, members, currentAthlete] = await Promise.all([
+      getLoggedAtByAthlete(),
+      fetchAllAthletes(),
       fetchCurrentAthlete(),
     ]);
+    const athleteIds = members.map((member) => member.id);
 
-    const myRow = leaderboard.find((row) => row.athleteId === currentAthlete.id);
-
-    return periodOptions.map((option) =>
-      option.id === currentPeriodId
-        ? {
-            periodId: option.id,
-            rank: myRow?.rank ?? null,
-            workoutDays: myRow?.workoutDays ?? 0,
-          }
-        : { periodId: option.id, rank: null, workoutDays: 0 }
-    );
+    return buildPeriods(new Date()).map((period) => {
+      const mine = rankAthletesForPeriod(athleteIds, loggedAt, period).find(
+        (row) => row.athleteId === currentAthlete.id
+      );
+      const workoutDays = mine?.workoutDays ?? 0;
+      return {
+        periodId: period.id,
+        rank: workoutDays > 0 ? (mine?.rank ?? null) : null,
+        workoutDays,
+      };
+    });
   } catch {
     return [];
   }

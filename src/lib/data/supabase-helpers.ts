@@ -1,8 +1,9 @@
 import { cache } from "react";
-import { redirect } from "next/navigation";
-import { createServerSupabaseClient, getAuthUser } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { fetchCurrentAthlete } from "@/lib/data/current-athlete";
+import { getActiveGroupMembers } from "@/lib/data/groups";
 import { ACTIVITY_PHOTOS_BUCKET, SIGNED_URL_TTL_SECONDS } from "@/lib/photo";
-import type { Athlete, FeedEntry } from "@/lib/types";
+import type { FeedEntry } from "@/lib/types";
 
 type ActivityPhotoRow = {
   id: string;
@@ -90,7 +91,7 @@ async function resolvePhotoUrls(
 }
 
 /**
- * Reconstructs FeedEntry[] from activities + their joined types, kudos, and
+ * Scoped to the active group's members. Reconstructs FeedEntry[] from activities + their joined types, kudos, and
  * photos — the one join every list-shaped lib/data/* read is built from, so
  * the mapping only lives in one place.
  *
@@ -108,12 +109,20 @@ export const fetchActivitiesAsFeedEntries = cache(async function fetchActivities
   }
 ): Promise<FeedEntry[]> {
   const supabase = await createServerSupabaseClient();
+  const members = await getActiveGroupMembers();
+  const memberIds = options?.athleteId
+    ? members.some((member) => member.id === options.athleteId)
+      ? [options.athleteId]
+      : []
+    : members.map((member) => member.id);
+  if (memberIds.length === 0) return [];
+
   let query = supabase
     .from("activities")
     .select(ACTIVITY_SELECT)
+    .in("athlete_id", memberIds)
     .order("logged_at", { ascending: false });
 
-  if (options?.athleteId) query = query.eq("athlete_id", options.athleteId);
   if (options?.since) query = query.gte("logged_at", options.since.toISOString());
 
   const { data, error } = await query;
@@ -123,52 +132,7 @@ export const fetchActivitiesAsFeedEntries = cache(async function fetchActivities
   return resolvePhotoUrls(supabase, drafts);
 });
 
-/**
- * Resolves "the current athlete" from the actual signed-in session —
- * proxy.ts guarantees every (main) request has one before this runs.
- * auth_user_id is populated by claim_athlete_with_phone() / login_with_phone()
- * in 20260726090000_phone_auth.sql, so this is a direct lookup, not a guess.
- *
- * A session can legitimately exist with no linked athlete yet: an anonymous
- * session gets created as soon as someone starts the claim/sign-in flow on
- * /login, and they might abandon it (close the tab, lose connection) before
- * a claim/login RPC actually links it to an athlete row. That's not a hard
- * failure — send them back to /login to pick up where they left off, rather
- * than crashing to error.tsx.
- */
-export const fetchCurrentAthlete = cache(async function fetchCurrentAthlete(): Promise<Athlete> {
-  const user = await getAuthUser();
-  if (!user) {
-    redirect("/login");
-  }
+/** The roster of the group currently being viewed (see lib/data/groups.ts). */
+export const fetchAllAthletes = getActiveGroupMembers;
 
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("athletes")
-    .select("id, name")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Could not resolve the current athlete for ${user.id}.`, {
-      cause: error,
-    });
-  }
-
-  if (!data) {
-    redirect("/login");
-  }
-
-  return data;
-});
-
-export const fetchAllAthletes = cache(async function fetchAllAthletes(): Promise<Athlete[]> {
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("athletes")
-    .select("id, name")
-    .order("created_at", { ascending: true });
-
-  if (error) throw error;
-  return data ?? [];
-});
+export { fetchCurrentAthlete };

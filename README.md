@@ -1,33 +1,39 @@
-# Family Workout
+# SweaTies
 
-A mobile-first, installable PWA that helps a 7-person family stay
-consistent with working out — by making each other's effort visible.
-Calm and motivating rather than competitive or judgmental:
-accountability through visibility, not pressure.
-
-Log a workout in a couple of taps, see the family's activity feed, check
-the leaderboard, and track your own streaks and history — all from a
-home-screen app, not just a website.
+A mobile-first, installable PWA for private workout crews — friends,
+teammates, colleagues. Think Strava's social side for a closed group:
+log a workout in a couple of taps, see your crew's feed, hand out kudos,
+and climb the leaderboard. Accountability through visibility, not pressure.
 
 ## Features
 
+- **Private groups with invite codes** — anyone can sign up, create a
+  group and share its code or `/join/<code>` link. You can belong to
+  several groups and switch between them in Settings. Admins can reset a
+  group's invite code. People only see workouts of athletes they share a
+  group with (enforced by Postgres Row Level Security, not just the UI).
 - **Home** — today's stats, an activity sparkline, and a live feed of the
-  family's recent workouts
-- **Board** — leaderboard with podium view and full rankings, multiple
-  time periods
-- **Profile** — per-athlete streaks, a month calendar of logged days,
-  activity breakdown, and ranking history
-- **Self-serve onboarding** — pick your name from the family list, enter
-  your mobile number, and you're in — no admin invite step, no OTP/email
-- **Installable PWA** — add-to-home-screen on iOS/Android, standalone
-  launch, offline app-shell caching, safe-area-aware layout for notches
-  and home indicators
+  group's workouts. Updates arrive in real time (Supabase Realtime).
+- **Board** — leaderboard with podium and full rankings for every quarter
+  of the year, this year, last year and all time.
+- **Kudos, comments and emoji reactions** — react to comments, with an
+  optional kudos chime (toggle in Settings).
+- **Celebration + share card** — logging today's workout triggers a
+  confetti moment and a shareable 4:5 image card (native share sheet or
+  download).
+- **Profile** — streaks, month calendar, activity breakdown and ranking
+  history per period.
+- **Phone sign-in** — Anonymous Sign-In plus a phone-number RPC; no
+  email or SMS codes. The number is a lightweight credential, not proof
+  of ownership (see "Known limitations").
+- **Installable PWA** — add-to-home-screen, standalone launch, offline
+  app-shell caching, safe-area-aware layout.
 
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org) (App Router, Turbopack)
 - [Supabase](https://supabase.com) — Postgres, Row Level Security, Auth
-  (Anonymous Sign-In + phone-number RPC), Storage
+  (Anonymous Sign-In + phone-number RPC), Realtime, Storage
 - Tailwind CSS v4
 - TypeScript
 
@@ -53,8 +59,9 @@ npx supabase start
 
 This spins up a local Postgres instance, runs the migrations in
 `supabase/migrations/`, and seeds it with realistic demo data
-(`supabase/seed.sql`) — 7 athletes, weeks of activity history, comments,
-and kudos, so the app looks alive from the first run. See
+(`supabase/seed.sql`) — a "Demo Crew" group (invite code `DEMOCREW01`)
+with 7 athletes, weeks of activity history, comments, and kudos. Sign up
+in the app, then join with that code to see it populated. See
 [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) for the full local-dev setup.
 
 ### 3. Configure environment variables
@@ -115,3 +122,12 @@ with a PWA-specific checklist and browser compatibility notes.
 ## License
 
 Private family project — not licensed for reuse.
+
+## Known limitations
+
+- Sign-in is by phone number only (no SMS verification), so anyone who
+  knows a member's number could sign in as them. Fine for a trusted crew;
+  add SMS OTP or a PIN before opening the app up more widely.
+- Phone numbers are +91 (India) only.
+- Push notifications (as in the app this was modelled on) are not
+  implemented yet.

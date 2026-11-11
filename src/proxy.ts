@@ -11,8 +11,8 @@ import { NextResponse, type NextRequest } from "next/server";
 // lib/data/supabase-helpers.ts and FRONTEND_INTEGRATION.md): even if a route
 // somehow rendered without this check running, it couldn't read or write
 // anything meaningful without a valid session.
-// Sign-in is Anonymous Sign-In plus a phone-match RPC from a single
-// client-rendered page — no separate callback route to allow-list.
+// Sign-in is Anonymous Sign-In plus a sign-up / sign-in-by-phone RPC from a
+// single client-rendered page — no separate callback route to allow-list.
 //
 // Also public: PWA plumbing that must be fetchable with no session at all.
 // /manifest.webmanifest is what the browser reads to decide installability
@@ -57,7 +57,12 @@ export async function proxy(request: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.some((path) => request.nextUrl.pathname.startsWith(path));
 
   if (!user && !isPublicPath) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Remember where they were headed (e.g. an invite link) so /login can
+    // send them back after sign-in.
+    const loginUrl = new URL("/login", request.url);
+    const { pathname, search } = request.nextUrl;
+    if (pathname !== "/") loginUrl.searchParams.set("next", pathname + search);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Deliberately no "signed-in users get redirected away from /login" rule

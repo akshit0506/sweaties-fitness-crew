@@ -40,6 +40,19 @@ insert into public.athletes (name) values
   ('Vishakha');
 
 -- ----------------------------------------------------------------------------
+-- One demo group containing everyone. Invite code is fixed so a second
+-- local account can join with `DEMOCREW01` and see the seeded activity.
+-- ----------------------------------------------------------------------------
+insert into public.groups (name, invite_code, created_by)
+select 'Demo Crew', 'DEMOCREW01', id from public.athletes where name = 'Akshit';
+
+insert into public.group_members (group_id, athlete_id, role)
+select g.id, a.id, case when a.name = 'Akshit' then 'admin' else 'member' end
+from public.groups g
+cross join public.athletes a
+where g.invite_code = 'DEMOCREW01';
+
+-- ----------------------------------------------------------------------------
 -- Activity types: the 5 defaults, plus two "Add Your Own" customs (Cardio,
 -- Pickleball) to demonstrate that path is real and family-visible once used.
 -- ----------------------------------------------------------------------------

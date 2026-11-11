@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { getAthletes, getCurrentUser } from "@/lib/data/athletes";
+import { getActiveGroup } from "@/lib/data/groups";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { APP_NAME } from "@/lib/config";
 import { INTERACTIVE_CLASSES } from "@/lib/interactive";
 
 export async function Masthead() {
-  const [currentUser, athletes] = await Promise.all([
+  const [currentUser, athletes, group] = await Promise.all([
     getCurrentUser(),
     getAthletes(),
+    getActiveGroup(),
   ]);
 
   return (
@@ -16,7 +18,9 @@ export async function Masthead() {
       style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
     >
       <div className="flex items-start justify-between">
-        <Eyebrow>{`Est. 2026 · ${athletes.length} athletes`}</Eyebrow>
+        <Link href="/settings" className={`rounded-md ${INTERACTIVE_CLASSES}`}>
+          <Eyebrow>{`${group?.name ?? "SweaTies"} · ${athletes.length} ${athletes.length === 1 ? "member" : "members"} ▾`}</Eyebrow>
+        </Link>
         <Link
           href="/settings"
           aria-label="Settings"

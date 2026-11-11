@@ -65,6 +65,16 @@ export type Comment = {
   athleteId: string;
   text: string;
   postedAt: string;
+  /** emoji -> ids of the athletes who reacted with it */
+  reactions: Record<string, string[]>;
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  inviteCode: string;
+  role: "admin" | "member";
+  memberCount: number;
 };
 
 export type ActivityBreakdownItem = {

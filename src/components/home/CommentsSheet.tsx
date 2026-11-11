@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { useAppState } from "@/components/providers/AppStateProvider";
 import { formatEntryTimestamp } from "@/lib/format";
 
+const QUICK_REACTIONS = ["❤️", "🔥", "👏", "💪", "😂"];
+
 type CommentsSheetProps = {
   entryId: string;
   open: boolean;
@@ -14,8 +16,9 @@ type CommentsSheetProps = {
 };
 
 export function CommentsSheet({ entryId, open, onClose }: CommentsSheetProps) {
-  const { commentsByEntryId, athletes, currentUser, addComment } = useAppState();
+  const { commentsByEntryId, athletes, currentUser, addComment, toggleReaction } = useAppState();
   const [text, setText] = useState("");
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const comments = commentsByEntryId[entryId] ?? [];
   const athleteById = new Map(athletes.map((athlete) => [athlete.id, athlete]));
@@ -50,6 +53,52 @@ export function CommentsSheet({ entryId, open, onClose }: CommentsSheetProps) {
                     <p className="text-xs text-muted">{formatEntryTimestamp(comment.postedAt)}</p>
                   </div>
                   <p className="text-sm text-ink">{comment.text}</p>
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {Object.entries(comment.reactions).map(([emoji, ids]) => {
+                      const mine = ids.includes(currentUser.id);
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          aria-pressed={mine}
+                          onClick={() => toggleReaction(entryId, comment.id, emoji)}
+                          className={`rounded-full border px-2 py-0.5 text-xs font-bold ${
+                            mine ? "border-rust bg-rust/10 text-rust" : "border-ink/15 text-muted"
+                          }`}
+                        >
+                          {emoji} {ids.length}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      aria-label="Add reaction"
+                      aria-expanded={pickerFor === comment.id}
+                      onClick={() => setPickerFor(pickerFor === comment.id ? null : comment.id)}
+                      className="rounded-full border border-dashed border-ink/25 px-2 py-0.5 text-xs text-muted hover:bg-ink/5"
+                    >
+                      ＋
+                    </button>
+                  </div>
+
+                  {pickerFor === comment.id && (
+                    <div className="mt-1.5 flex gap-1 rounded-full border border-ink/15 bg-card p-1 w-fit">
+                      {QUICK_REACTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            toggleReaction(entryId, comment.id, emoji);
+                            setPickerFor(null);
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-lg hover:bg-ink/5"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -8,7 +8,14 @@ type CommentRow = {
   athlete_id: string;
   text: string;
   posted_at: string;
+  comment_reactions: { athlete_id: string; emoji: string }[] | null;
 };
+
+function groupReactions(rows: { athlete_id: string; emoji: string }[]): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
+  for (const row of rows) (grouped[row.emoji] ??= []).push(row.athlete_id);
+  return grouped;
+}
 
 export const getAllComments = cache(async function getAllComments(): Promise<
   Record<string, Comment[]>
@@ -17,7 +24,7 @@ export const getAllComments = cache(async function getAllComments(): Promise<
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("comments")
-      .select("id, activity_id, athlete_id, text, posted_at")
+      .select("id, activity_id, athlete_id, text, posted_at, comment_reactions ( athlete_id, emoji )")
       .order("posted_at", { ascending: true });
 
     if (error) throw error;
@@ -30,6 +37,7 @@ export const getAllComments = cache(async function getAllComments(): Promise<
         athleteId: row.athlete_id,
         text: row.text,
         postedAt: row.posted_at,
+        reactions: groupReactions(row.comment_reactions ?? []),
       });
     }
     return grouped;
