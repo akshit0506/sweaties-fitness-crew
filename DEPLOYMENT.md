@@ -92,7 +92,7 @@ select count(*) from public.activities;     -- expect: 0 (fresh project)
    tune, no OTP delivery to worry about.
 2. **URL Configuration** (Studio → Authentication → URL Configuration):
    set **Site URL** to your real production URL (e.g.
-   `https://family-workout-navy.vercel.app`). No redirect URL to add beyond
+   `https://sweaties-fitness.vercel.app`). No redirect URL to add beyond
    that — there's no email link or OAuth callback in this flow.
 
 > **Phone numbers are a shared secret, not proof of ownership.** Sign-up
